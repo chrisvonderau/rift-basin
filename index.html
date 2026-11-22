@@ -150,7 +150,7 @@
   <div id="readyrow"><span id="p1ready" class="rdy">Controller 1 waiting</span><span id="p2ready" class="rdy">Controller 2 waiting</span></div>
   <p id="levelpick">LEVEL &nbsp; <a data-l="easy">1 EASY</a> <a data-l="normal">2 NORMAL</a> <a data-l="hard">3 HARD</a> <a data-l="nightfall">4 NIGHTFALL</a></p>
   <button id="begin">BEGIN</button>
-  <div id="version">v0.8</div>
+  <div id="version">v0.8.1</div>
   <p id="padstatus">CONTROLLER: press any button on it to connect</p>
   <p id="season">SEASON &nbsp; <a data-s="spring">SPRING</a> <a data-s="summer">SUMMER</a> <a data-s="autumn">AUTUMN</a> <a data-s="winter">WINTER</a></p>
   <p id="quality">QUALITY &nbsp; <a data-q="low">LOW</a> <a data-q="medium">MEDIUM</a> <a data-q="high">HIGH</a></p>
@@ -7104,7 +7104,7 @@ function Fh(s) {
             let u = xt((an.KeyE ? 1 : 0) - (an.KeyQ ? 1 : 0) + st.mirror + (window.__touch && window.__touch.mirror || 0), -1, 1);
             u ? (Oh += e, h.th += u * (Oh < .45 ? .1 : .42) * e) : Oh = 0
         } else
-            for (let u of cr) u.sac.visible && Math.hypot(u.x - K.x, u.z - K.z) < 2.6 && (r = K.sacs < 3 ? Va("E", "A") + " \u2014 gather scent sac" : "You can carry no more")
+            for (let u of cr) u.sac.visible && Math.hypot(u.x - K.x, u.z - K.z) < 2.6 && (r = K.sacs < (de.sacMax || 3) ? Va("E", "A") + " \u2014 gather scent sac" : "You can carry no more")
     }
     for (let h of Pt) h.frame.rotation.y = Math.PI / 2 - h.th;
     let o = cd();
@@ -8272,7 +8272,7 @@ requestAnimationFrame(Zd);
         };
     })();
 
-/* Rift Basin v0.8: robust 2-controller play and Easy-first levels. */
+/* Rift Basin v0.8.1: A-button gather on claimed pads; robust 2-controller play and Easy-first levels. */
 (function () {
     var LEVELS = [
         { id: "easy", num: 1, name: "Easy", blurb: "A quiet first crossing. One hunter in the brush, a distant rex, one mirror, and time to breathe.",
@@ -8448,6 +8448,10 @@ requestAnimationFrame(Zd);
             return 2;
         }
         return null;
+    }
+    function padIsClaimed(pad) {
+        if (!pad) return false;
+        return pad.index === de.p1Pad || pad.index === de.p2Pad;
     }
     function forgetPad(which) {
         if (which === 2) { de.p2Pad = null; de.p2Id = null; }
@@ -8743,6 +8747,10 @@ requestAnimationFrame(Zd);
     };
     if (V07()) V07().CdFor = CdForLevel;
     var CdFor = function (P) { return CdForLevel(P); };
+    function PdFor(P) {
+        var v = V07();
+        if (v && v.PdFor) return v.PdFor(P);
+    }
 
     var Ay1 = Ay;
     Ay = function () {
@@ -8830,6 +8838,10 @@ requestAnimationFrame(Zd);
         }
         de.level = selected;
         applyNight(false);
+        if (de.playersWanted === 1 && de.p1Pad == null) {
+            var startPads = getAllPads();
+            if (startPads.length) claimPad(startPads[0]);
+        }
         if (de.playersWanted === 2 && p2Pad() && !de.coop) {
             // join as soon as the valley exists; hook after begin sets up wake
             de._startCoop = true;
@@ -8849,6 +8861,10 @@ requestAnimationFrame(Zd);
                 return false;
             }
             de.level = selected;
+            if (de.playersWanted === 1 && de.p1Pad == null) {
+                var bp = getAllPads();
+                if (bp.length) claimPad(bp[0]);
+            }
             showIntro(levelById(de.level));
             if (de.playersWanted === 2 && p2Pad()) de._startCoop = true;
         }, true);
@@ -8929,19 +8945,41 @@ requestAnimationFrame(Zd);
             return;
         }
 
-        // Mid-game join: a distinct unclaimed pad presses A
+        // Mid-game P2 join: A on a pad that is not already claimed.
+        // Never call bedge() on a claimed pad here — that would eat the A
+        // edge before drive() can gather / throw.
         if (!de.coop && (de.mode === "play" || de.mode === "wake")) {
             for (var k = 0; k < pads.length; k++) {
                 var q = pads[k];
-                if (bedge(q, 0) && q.index !== de.p1Pad) {
-                    if (de.p1Pad == null && st.active) { claimPad(q); Th(true); }
-                    else {
+                if (padIsClaimed(q)) continue;
+                if (de.p1Pad == null && st.active) {
+                    // Solo pad never bound (e.g. Begin without a title A): this is P1.
+                    // Do not consume A; drive() gathers on this press.
+                    claimPad(q);
+                    Th(true);
+                    continue;
+                }
+                if (de.p1Pad == null && !st.active && !(de.kbP1)) {
+                    // No keyboard P1 either: bind as P1, leave A for gather.
+                    claimPad(q);
+                    Th(true);
+                    continue;
+                }
+                if (bedge(q, 0)) {
+                    // Keyboard is P1, or P1 already has a different pad: this A joins P2.
+                    if (de.p1Pad == null && (!st.active || de.kbP1)) {
+                        de.p2Pad = q.index;
+                        de.p2Id = q.id || "";
+                        callJoinP2(q.index);
+                    } else {
                         var slot = claimPad(q);
                         if (slot === 2 || de.p2Pad === q.index) callJoinP2(q.index);
                     }
                 }
             }
         }
+        p1 = p1Pad();
+        p2 = p2Pad();
 
         // Flight / end screens
         if (de.mode === "flight") {
@@ -9069,6 +9107,18 @@ requestAnimationFrame(Zd);
     });
 
     // Keep mid-game joinP2 API, and expose level debug hooks
+    window.__rift.pollPads = function () { Id(); };
+    window.__rift.nearSacs = function (P) {
+        P = P || K;
+        var out = [];
+        if (typeof cr === "undefined" || !cr) return out;
+        for (var i = 0; i < cr.length; i++) {
+            var s = cr[i];
+            if (!s) continue;
+            out.push({ i: i, x: s.x, z: s.z, visible: !!(s.sac && s.sac.visible), dist: Math.hypot(s.x - P.x, s.z - P.z) });
+        }
+        return out;
+    };
     window.__rift.hunterStats = function () {
         if (typeof jt === "undefined" || !jt.REX) return null;
         return {
@@ -9106,5 +9156,7 @@ requestAnimationFrame(Zd);
     setPlayersWanted(1);
     setSelectedLevel("easy", true);
 })();
+
+
 </script>
 </html>
