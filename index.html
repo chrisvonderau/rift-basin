@@ -125,7 +125,7 @@
   <p>A playable slice. One valley, one pylon, one way home.</p>
   <p style="font-size:14px">Keyboard, touch, or an Xbox controller — solo or two players. Best with headphones. Listen to the jungle — when it goes quiet, something is hunting.</p>
   <button id="begin">BEGIN</button>
-  <div id="version">v0.7</div>
+  <div id="version">v0.7.1</div>
   <p id="padstatus">CONTROLLER: press any button on it to connect</p>
   <p id="season">SEASON &nbsp; <a data-s="spring">SPRING</a> <a data-s="summer">SUMMER</a> <a data-s="autumn">AUTUMN</a> <a data-s="winter">WINTER</a></p>
   <p id="quality">QUALITY &nbsp; <a data-q="low">LOW</a> <a data-q="medium">MEDIUM</a> <a data-q="high">HIGH</a></p>
@@ -4113,7 +4113,7 @@ Be.fog_fragment = `#ifdef USE_FOG
 #endif`;
 var nt = new is,
     id = 11124646;
-nt.fog = new ra(id, .0105);
+nt.fog = new ra(id, .0032);
 var Nc = Ca(4163240, id, !0);
 nt.add(Nc);
 {
@@ -7137,7 +7137,7 @@ window.__rift.run = s => {
 };
 requestAnimationFrame(Zd);
 
-/* Rift Basin v0.7 extras: touch, seasons, fauna roster, local co-op. */
+/* Rift Basin v0.7.1 extras: touch, seasons, fauna roster, local co-op. */
 (function() {
     var TOUCH_OK = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
     var SEASON_KEYS = ["spring", "summer", "autumn", "winter"];
@@ -7253,10 +7253,10 @@ requestAnimationFrame(Zd);
 
     /* ---------- seasons (palette + particles only) ---------- */
     var SEASONS = {
-        spring: { fog: 0xb7c8a8, top: 0x6a9bc4, hor: 0xc5d9b8, exp: .9, leaf: 0x4f8a32, ground: 0x6a7a40, particle: "rain" },
-        summer: { fog: 0xc4c09a, top: 0x3f5e7a, hor: 0xd4cba0, exp: .88, leaf: 0x5a7a2e, ground: 0x6b5a32, particle: "haze" },
-        autumn: { fog: 0xc8ab78, top: 0x5a6a88, hor: 0xdeb07a, exp: .86, leaf: 0xb85a18, ground: 0x6a4a22, particle: "leaves" },
-        winter: { fog: 0x8a98a2, top: 0x5a6a78, hor: 0xc8d2d8, exp: .72, leaf: 0x7a7a68, ground: 0x8a9498, particle: "snow" }
+        spring: { fog: 0x7e9a7a, top: 0x6a9bc4, hor: 0xa8c4a8, exp: .9, density: 0.0032, leaf: 0x4f8a32, ground: 0x6a7a40, particle: "rain" },
+        summer: { fog: 0x8a9470, top: 0x3f5e7a, hor: 0xb8ae80, exp: .88, density: 0.0032, leaf: 0x5a7a2e, ground: 0x6b5a32, particle: "haze" },
+        autumn: { fog: 0x8a6e48, top: 0x5a6a88, hor: 0xc4a06a, exp: .86, density: 0.0032, leaf: 0xb85a18, ground: 0x6a4a22, particle: "leaves" },
+        winter: { fog: 0x6a7884, top: 0x5a6a78, hor: 0xa8b8c0, exp: .72, density: 0.0036, leaf: 0x7a7a68, ground: 0x8a9498, particle: "snow" }
     };
     var weather = { pts: null, kind: "", count: 0, arr: null, vel: null };
     function markSeason() {
@@ -7275,8 +7275,9 @@ requestAnimationFrame(Zd);
         var pal = SEASONS[de.season] || SEASONS.summer;
         qt.toneMappingExposure = pal.exp;
         try {
-            if (!nt.fog) nt.fog = new oa(pal.fog, 80, 900);
-            else { nt.fog.color.set(pal.fog); nt.fog.near = 80; nt.fog.far = de.season === "winter" ? 700 : 900; }
+            var den = pal.density != null ? pal.density : 0.0032;
+            if (!nt.fog || !nt.fog.isFogExp2) nt.fog = new ra(pal.fog, den);
+            else { nt.fog.color.set(pal.fog); nt.fog.density = den; }
         } catch (e) {}
         try {
             if (Nc && Nc.material && Nc.material.uniforms) {
